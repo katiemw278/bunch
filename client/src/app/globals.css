@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-inter: "Inter", system-ui, sans-serif;
+  --font-playfair: "Playfair Display", Georgia, serif;
+}
+
+/* ── Base styles ─────────────────────────────────────────────────── */
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: #faf9f7;
+  color: #2c2c2c;
+  font-family: var(--font-inter);
+}
+
+/* ── Focus styles — visible and consistent ──────────────────────── */
+
+*:focus-visible {
+  outline: 2px solid #2c2c2c;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Tile cleared color system ──────────────────────────────────── */
+
+.tile-color-1 { background-color: #d4e8d0; border-color: #b8d4b2; }
+.tile-color-2 { background-color: #d4e0f0; border-color: #b2c8e0; }
+.tile-color-3 { background-color: #f0ddd4; border-color: #e0c4b2; }
+.tile-color-4 { background-color: #e8d4f0; border-color: #d0b8e0; }
+.tile-color-5 { background-color: #f0e8d4; border-color: #e0d0b2; }
+.tile-color-6 { background-color: #d4f0e8; border-color: #b2e0d0; }
+.tile-color-7 { background-color: #f0d4d4; border-color: #e0b8b8; }
+.tile-color-8 { background-color: #d4d4f0; border-color: #b8b8e0; }
+
+/* ── Tile animation ─────────────────────────────────────────────── */
+
+@keyframes tileClear {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
+
+.tile-animating {
+  animation: tileClear 0.35s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile-animating { animation: none; }
+}
+
+/* ── Bunch celebration for large matches ────────────────────────── */
+
+@keyframes celebrate {
+  0%   { transform: scale(1) rotate(0deg); }
+  25%  { transform: scale(1.04) rotate(-1deg); }
+  50%  { transform: scale(1.04) rotate(1deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.celebrate {
+  animation: celebrate 0.5s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebrate { animation: none; }
+}
