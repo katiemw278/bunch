@@ -14,6 +14,7 @@ import { HelpModal } from "@/components/help/HelpModal";
 import { ReportModal } from "@/components/help/ReportModal";
 
 export default function Home() {
+  const [archive, setArchive] = useState(false);
   const [playing, setPlaying] = useState(false);
   useLayoutEffect(() => {
     const previous = window.history.scrollRestoration;
@@ -29,12 +30,15 @@ export default function Home() {
     };
   }, [playing]);
   const [showHelp, setShowHelp] = useState(false);
+  if (archive) return <Archive onBack={() => setArchive(false)} onPlay={id => { const url = new URL(window.location.href); url.searchParams.set("puzzle", id); window.history.replaceState(null, "", url); setArchive(false); setPlaying(true); }} />;
   if (!playing) return <>
     <main className="mode-screen">
       <div className="mode-card welcome-card">
         <h1 aria-label="bunch"><BunchWordmark /></h1>
         <p className="welcome-intro">How many categories can you bunch with one word?</p>
-        <button type="button" className="welcome-play" onClick={() => setPlaying(true)}>Let's crush it!</button>
+        <button type="button" className="welcome-play" onClick={() => { window.history.replaceState(null, "", window.location.pathname); setPlaying(true); }}>Let's crush it!</button>
+        <PlayerSummary />
+        <button type="button" className="chooser-help" onClick={() => setArchive(true)}>Past Bunches</button>
         <button type="button" className="chooser-help" onClick={() => setShowHelp(true)}>How to Play</button>
       </div>
     </main>
@@ -46,6 +50,15 @@ export default function Home() {
 function Game({ onHome }: { onHome: () => void }) {
   const { puzzle, gameState, feedback, loadError, isSubmitting, isAnimating, restoredCompleted, submit } = useGame("hard");
 
+  const [newDaily, setNewDaily] = useState(false);
+  useEffect(() => {
+    if (!puzzle) return;
+    let active = true;
+    const check = () => { fetch('/api/puzzle/today').then(r=>r.ok?r.json():null).then(value=>{if(active && value && typeof value==='object' && 'id' in value)setNewDaily(value.id!==puzzle.id);}).catch(()=>{}); };
+    const timer = setInterval(check,60000);
+    window.addEventListener('focus',check);
+    return () => {active=false;clearInterval(timer);window.removeEventListener('focus',check);};
+  },[puzzle]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectionNotice, setSelectionNotice] = useState(0);
   useLayoutEffect(() => { if (feedback.type === "result") setSelectedIds([]); }, [feedback]);
@@ -157,6 +170,7 @@ function Game({ onHome }: { onHome: () => void }) {
             </div>
           </div>
 
+          {newDaily && <button className="chooser-help" onClick={() => {window.location.href=window.location.pathname;}}>A new daily bunch is ready — go to today</button>}
           {/* ── Board ─────────────────────────────────────────────────── */}
           <Board
             showAll={revealBoard || restoredCompleted}
@@ -231,3 +245,23 @@ function Game({ onHome }: { onHome: () => void }) {
   );
 }
 
+
+function PlayerSummary() {
+  const [stats, setStats] = useState<{currentStreak:number;bestStreak:number;totalCompleted:number}|null>(null);
+  useEffect(() => { fetch('/api/player').then(r => r.ok ? r.json() : null).then(data => setStats(data as {currentStreak:number;bestStreak:number;totalCompleted:number}|null)).catch(() => {}); }, []);
+  return stats ? <div className="guest-stats"><p>{stats.currentStreak} day streak · Best {stats.bestStreak} · {stats.totalCompleted} completed</p><small>Progress belongs to this browser. Clearing cookies resets access.</small></div> : null;
+}
+function Archive({onBack,onPlay}:{onBack:()=>void;onPlay:(id:string)=>void}) {
+  type Entry = {id:string;number:number;date:string;status:string};
+  const [items,setItems] = useState<Entry[]>([]);
+  const [next,setNext] = useState<string|null>(null);
+  const [error,setError] = useState('');
+  const [busy,setBusy] = useState(false);
+  async function load(before?:string) {
+    setBusy(true); setError('');
+    try { const r=await fetch('/api/archive'+(before?'?before='+before:'')); if(!r.ok)throw new Error(); const data=await r.json() as {boards:Entry[];nextBefore:string|null}; setItems(old=>before?[...old,...data.boards]:data.boards);setNext(data.nextBefore); }
+    catch {setError('Could not load past boards. Please try again.');} finally {setBusy(false);}
+  }
+  useEffect(()=>{void load();},[]);
+  return <main className="archive-screen"><button className="chooser-help" onClick={onBack}>← Home</button><h1>Past Bunches</h1><p>Play a past board anytime. Archive wins count toward completed boards, but don’t extend your daily streak.</p><div className="archive-list">{items.map(item=><button key={item.id} onClick={()=>onPlay(item.id)}><span>Bunch #{String(item.number).padStart(3,'0')} · {item.date}</span><small>{item.status.replaceAll('-',' ')}</small></button>)}</div>{!busy&&!items.length&&!error&&<p>Your archive starts after the first daily board.</p>}{error&&<p role="alert">{error} <button onClick={()=>load(next??undefined)}>Retry</button></p>}{busy&&<p>Loading…</p>}{next&&!busy&&<button className="chooser-help" onClick={()=>load(next)}>More boards</button>}</main>;
+}

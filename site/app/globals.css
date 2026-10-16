@@ -401,3 +401,5 @@ button { touch-action: manipulation; }
 .board-cheer .match-cheer { position:relative; }
 .match-cheer .cheer-juice { inset:0 0 auto; height:0; }
 .match-cheer .cheer-juice i { top:0; }
+
+.guest-stats {font-family:var(--font-dm-sans),sans-serif;text-align:center;font-size:13px;color:#675475;line-height:1.6;margin:12px 0}.guest-stats small {font-size:11px}.archive-screen {max-width:600px;margin:48px auto;padding:24px;font-family:var(--font-dm-sans),sans-serif}.archive-screen h1{font-size:28px;margin:20px 0}.archive-screen p{line-height:1.6;margin-bottom:20px}.archive-list{display:grid;gap:10px}.archive-list button{display:flex;justify-content:space-between;gap:12px;text-align:left;padding:16px;border:1px solid #d9c5e5;border-radius:16px;background:#fff9e8}.archive-list small{text-transform:capitalize;color:#735185}

@@ -5,9 +5,8 @@ import type { GameState, FeedbackState, TileState, BunchLabel, HistoryEntry } fr
 import type { Puzzle } from "@/types/game";
 import { fetchTodaysPuzzle, fetchPuzzleById, submitAnswer } from "@/lib/api";
 import { POP_INTERVAL_MS, POP_LIFETIME_MS } from "@/lib/animation-timing";
-import { saveGameState, loadGameState, clearGameState } from "@/lib/storage";
+import { saveGameState } from "@/lib/storage";
 
-const BOARD_SIZE = 9;
 
 // Colors cycle per submission (not per tile — same submission = same color)
 const MOVE_COLORS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
@@ -81,35 +80,11 @@ export function useGame(mode: "easy" | "hard" = "hard") {
         const p = selected ? await fetchPuzzleById(selected) : await fetchTodaysPuzzle(mode);
         setPuzzle(p);
 
-        // An explicit playtest link resets this puzzle once, then returns to
-        // the ordinary URL so subsequent refreshes keep the new progress.
-        const restart = url.searchParams.get("restart") === "1";
-        if (restart) {
-          clearGameState(p.id);
-          url.searchParams.delete("restart");
-          window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
-        }
-        const saved = restart ? null : loadGameState(p.id);
-        if (saved && saved.status !== undefined) {
-          // Rebuild tile state from history
-          const tiles = rebuildTiles(p.categories, saved.history);
-          // Old eight-move losses resume under the unlimited-move rules.
-          const status = saved.clearedTiles.length >= p.categories.length ? "won" : "playing";
-          setRestoredCompleted(status === "won");
-          setGameState({ ...saved, status, tiles });
-        } else {
-          // Fresh game
-          setGameState({
-            puzzleId: p.id,
-            status: "playing",
-            moveCount: 0,
-            score: 0,
-            clearedTiles: [],
-            previousAnswers: [],
-            history: [],
-            tiles: buildInitialTiles(p.categories),
-          });
-        }
+        const response = await fetch(`/api/game?puzzle=${encodeURIComponent(p.id)}`);
+        if (!response.ok) throw new Error('Saved game unavailable');
+        const saved = await response.json() as GameState;
+        setRestoredCompleted(saved.status === "won");
+        setGameState({ ...saved, tiles: rebuildTiles(p.categories, saved.history) });
       } catch (e) {
         setLoadError("Couldn't load today's puzzle. Check your connection and refresh.");
       }
@@ -143,6 +118,7 @@ export function useGame(mode: "easy" | "hard" = "hard") {
 
       try {
         const result = await submitAnswer({
+          requestId: crypto.randomUUID(),
           selectedCategoryIds,
           puzzleId: puzzle.id,
           answer: trimmed,

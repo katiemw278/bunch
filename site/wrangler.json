@@ -20,9 +20,15 @@
     }
   ],
   "vars": {
-    "JUDGING_MODE": "seeded"
+    "JUDGING_MODE": "seeded",
+    "GENERATION_MODE": "disabled"
   },
   "observability": {
     "enabled": true
+  },
+  "triggers": {
+    "crons": [
+      "17 * * * *"
+    ]
   }
 }

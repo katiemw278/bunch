@@ -2,6 +2,7 @@ import type { Puzzle } from "@/types/game";
 const API_BASE = "";
 
 export interface SubmitRequest {
+  requestId?: string;
   puzzleId: string;
   selectedCategoryIds: string[];
   answer: string;

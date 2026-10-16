@@ -16,7 +16,9 @@
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "deploy": "node scripts/deploy-standalone.mjs",
     "test:local": "node tests/standalone-smoke.mjs",
-    "test:standalone": "node scripts/verify-local.mjs"
+    "test:standalone": "node scripts/verify-local.mjs",
+    "db:seed:local": "node scripts/seed-local.mjs",
+    "puzzles:review": "node scripts/review-puzzles.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
