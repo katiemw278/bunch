@@ -1,6 +1,6 @@
 # Bunch
 
-A daily browser category puzzle. Nine categories — how few answers can you use to clear them all?
+A daily browser category puzzle. Nine categories. How few answers can you use to clear them all?
 
 ---
 
