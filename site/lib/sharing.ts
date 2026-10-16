@@ -1,9 +1,9 @@
 import type { GameState } from "@/types/game";
 
 /** Spoiler-free result: one row per move, in submission order. */
-export function buildShareText(state: GameState, _categoryIds: string[]): string {
+export function buildShareText(state: GameState, _categoryIds: string[], number?: number): string {
   const breakdown = state.history.map(entry => entry.tilesCleared.length ? "🟣".repeat(entry.tilesCleared.length) : "❌");
-  const puzzleNumber = state.puzzleId.replace("puzzle-", "").replace(/-hard4?$/, "");
+  const puzzleNumber = number === undefined ? state.puzzleId.replace("puzzle-", "").replace(/-hard4?$/, "") : String(number).padStart(3, "0");
   return [`Bunch #${puzzleNumber}`, `Moves: ${state.moveCount}`, `Score: ${state.score}`, "", ...breakdown].join("\n").trim();
 }
 

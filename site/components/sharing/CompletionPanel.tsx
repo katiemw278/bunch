@@ -42,7 +42,7 @@ export function CompletionPanel({ gameState, categoryIds, puzzleNumber, open, on
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
 
   async function handleCopy() {
-    const result = await copyToClipboard(buildShareText(gameState, categoryIds));
+    const result = await copyToClipboard(buildShareText(gameState, categoryIds, puzzleNumber));
     if (copyTimer.current) clearTimeout(copyTimer.current);
     setCopyState(result.success ? "copied" : "failed");
     if (result.success) copyTimer.current = setTimeout(() => setCopyState("idle"), 2500);
@@ -57,7 +57,7 @@ export function CompletionPanel({ gameState, categoryIds, puzzleNumber, open, on
       } }}>
       <div className="results-content">
         <button type="button" className="results-close" onClick={onClose} aria-label="Close results">×</button>
-        <p className="results-kicker">Today's bunch · #{puzzleNumber}</p>
+        <p className="results-kicker">Bunch · #{puzzleNumber}</p>
         <div className={`results-mascot ${won ? "is-happy" : ""}`}><BunchBuddy happy={won} /></div>
         <h2 id="results-title">{won ? getFinishHeadline(moveCount) : "A little unbunched."}</h2>
         <div className="results-score"><strong>{score}</strong><span>final score</span></div>
@@ -66,7 +66,7 @@ export function CompletionPanel({ gameState, categoryIds, puzzleNumber, open, on
           {copyState === "copied" ? "Copied! ✓" : copyState === "failed" ? "Try copying again" : "Copy result ↗"}
         </button>
         <p className="copy-status" role="status" aria-live="polite">{copyState === "copied" ? "Ready for the group chat." : copyState === "failed" ? "Copy failed. You can select the text below." : "A fresh bunch every day."}</p>
-        {copyState === "failed" && <pre tabIndex={0} className="manual-share-text">{buildShareText(gameState, categoryIds)}</pre>}
+        {copyState === "failed" && <pre tabIndex={0} className="manual-share-text">{buildShareText(gameState, categoryIds, puzzleNumber)}</pre>}
         <button type="button" className="back-to-board" onClick={onClose}>Back to my board</button>
       </div>
     </dialog>

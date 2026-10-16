@@ -1,0 +1,53 @@
+name: Bunch checks
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/bunch-checks.yml']
+  pull_request:
+    paths: ['site/**', '.github/workflows/bunch-checks.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: bunch-checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  standalone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: site
+    env:
+      CI: 'true'
+      WRANGLER_SEND_METRICS: 'false'
+      JUDGING_MODE: seeded
+      GENERATION_MODE: disabled
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          package_json_file: site/package.json
+          run_install: false
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check types
+        run: pnpm typecheck
+      - name: Offline judging and sharing regressions
+        run: pnpm test:unit
+      - name: Migrate local database
+        run: pnpm db:migrate:local
+      - name: Verify migrations are repeatable
+        run: pnpm db:migrate:local
+      - name: Seed local fixtures
+        run: pnpm db:seed:local
+      - name: Build standalone app
+        run: pnpm build
+      - name: Local gameplay and database regressions
+        run: pnpm test:standalone

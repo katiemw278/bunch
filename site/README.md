@@ -68,3 +68,7 @@ List drafts with `pnpm puzzles:review`. Inspect every definition, verify example
 ### Remaining before public launch
 
 Create the Cloudflare account/D1 database; replace the placeholder database ID; apply remote migrations; configure live judging and its secret; approve a queue of real daily boards; then deploy and test on the free workers.dev URL. Production seeding must not use the local fixture script. Set up monitoring, usage/spending limits, backups, a privacy notice and a guest-data retention policy. Test the archive, mobile layout, rollover and recovery on real devices. Add optional sign-in and cross-device streak recovery later. No Cloudflare resources, provider calls or purchases were made during local preparation.
+
+## Automated checks
+
+See [docs/TESTING.md](docs/TESTING.md) for offline judging tests, database-backed gameplay regressions, the semantic review set and the remaining real-device checklist. `pnpm test:unit` runs without a server or provider key. The root `.github/workflows/bunch-checks.yml` runs the standalone checks on pushes and pull requests; it never deploys.

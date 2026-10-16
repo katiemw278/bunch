@@ -14,6 +14,7 @@ try {
   if (!ready) throw new Error("Local server did not become ready within 45 seconds");
   process.env.BUNCH_TEST_URL = "http://127.0.0.1:5173";
   await import("../tests/standalone-smoke.mjs");
+  await import("../tests/gameplay-regression.mjs");
 } catch (error) {
   console.error(log);
   throw error;
