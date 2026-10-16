@@ -20,7 +20,7 @@
     }
   ],
   "vars": {
-    "JUDGING_MODE": "seeded",
+    "JUDGING_MODE": "live",
     "GENERATION_MODE": "disabled"
   },
   "observability": {
