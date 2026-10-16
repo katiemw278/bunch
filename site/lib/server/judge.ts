@@ -29,13 +29,22 @@ export async function judgeAnswer(answer: string, categories: Category[]): Promi
   const results: Judgment[] = cached.filter(c => categories.some(category => category.id === c.categoryId)).map(c => ({ categoryId: c.categoryId, matches: !!c.matches, explanation: c.explanation }));
   const pending = categories.filter(c => !results.some(r => r.categoryId === c.id));
   if (!pending.length) return results;
-  const key = (env as unknown as { GROQ_API_KEY?: string }).GROQ_API_KEY;
-  if (!key) {
-    const seeds = DEV_SEED_JUDGMENTS as Record<string, { matches: boolean; explanation: string }>;
-    // Unconfigured previews must never mark an unknown answer wrong by default.
-    if (!pending.some(c => seeds[`${answer}|${c.id}`])) return null;
-    return [...results, ...pending.map(c => ({ categoryId: c.id, matches: seeds[`${answer}|${c.id}`]?.matches ?? false, explanation: seeds[`${answer}|${c.id}`]?.explanation ?? "No seeded match." }))];
+  const runtime = env as unknown as { GROQ_API_KEY?: string; JUDGING_MODE?: string };
+  const mode = runtime.JUDGING_MODE ?? "seeded";
+  if (mode !== "live") {
+    // Local demos must never contact a model, even if a key is present.
+    const seeds: Record<string, { matches: boolean; explanation: string }> = {
+      ...DEV_SEED_JUDGMENTS,
+      "poncho|p4-c6": { matches: true, explanation: "A poncho protects against rain." },
+      "poncho|p4-c9": { matches: true, explanation: "A poncho can be folded for storage." },
+      "poncho|p4-c14": { matches: false, explanation: "A poncho is not a chess piece." },
+    };
+    // Unknown fixtures remain unchecked instead of being called incorrect.
+    if (pending.some(c => !seeds[`${answer}|${c.id}`])) return null;
+    return [...results, ...pending.map(c => ({ categoryId: c.id, ...seeds[`${answer}|${c.id}`] }))];
   }
+  const key = runtime.GROQ_API_KEY;
+  if (!key) return null;
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },

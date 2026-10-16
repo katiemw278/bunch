@@ -6,7 +6,7 @@ The current public 4×4 game is in [site/](site/). This snapshot matches Sites c
 
 The original 3×3 Next.js / Express implementation in `client/` and `server/` is preserved below. Its instructions describe the older version, not the current game.
 
-The current version uses React / TypeScript, Vinext, Cloudflare Workers, D1, and Groq. All 152 tracked source and asset files are included. Runtime secrets, player data, judgment database contents, node_modules, and build output are not included. The Sites configuration remains in the snapshot as deployment context; standalone Cloudflare deployment still needs to be configured. No paid services or new deployments were activated by this import.
+The current version uses React / TypeScript, Vinext, Cloudflare Workers, D1, and Groq. All 152 tracked source and asset files are included. Runtime secrets, player data, judgment database contents, node_modules, and build output are not included. The current source now includes standalone Cloudflare configuration, local D1 migrations, seeded no-charge judging and local API smoke tests. See [site/README.md](site/README.md) for commands. Cloudflare account setup and actual remote deployment are still pending; a purchased domain is not required. Inherited Sites files remain only as provenance. No paid services or new deployments were activated by this import.
 
 See [MIGRATION.md](MIGRATION.md) for next steps.
 

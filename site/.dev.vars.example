@@ -1,0 +1,3 @@
+# Safe default: stored sample judgments only, no external AI calls.
+JUDGING_MODE=seeded
+# To enable live checking deliberately, set JUDGING_MODE=live and add GROQ_API_KEY.

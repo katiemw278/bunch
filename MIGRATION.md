@@ -6,10 +6,14 @@
 - Existing root, client, and server code is retained. The import does not move live hosting or copy database contents.
 - The current source passed TypeScript checks and the production build during the latest Sites update. This import changes no game code.
 
-## Next steps without a domain purchase
+## Standalone preparation completed
 
-1. Prepare a standalone build in `site/`: replace Sites-specific build plugins and execution-profile assumptions, configure a Worker entrypoint and D1 binding using an account-owned database.
-2. Verify a local no-secret workflow with sample judgments; add a database migration and document how to supply GROQ_API_KEY for live checking. Do not commit a real key or call paid APIs as part of ordinary tests.
+The `site/` folder now uses a standard Vinext / Cloudflare configuration, direct Worker entrypoint, `wrangler.json`, local D1 migrations, explicit seeded/live judging, and a guarded deployment command. Local checks passed for page serving, 16 categories, selected-only checks, matches, a nonmatch, unknown fixtures, duplicates, selection validation, and database report writes. The migration can be reapplied without changes. No remote resources were created and no paid AI requests were made. See `site/README.md` for setup. Remaining deployment work requires an account-owned D1 ID, authentication and deliberate live judging configuration.
+
+## Remaining roadmap
+
+1. Configure the already prepared standalone build with an account-owned D1 database when ready to test remotely. No domain purchase is required.
+2. Use `pnpm db:migrate:local`, `pnpm build` and `pnpm test:standalone` from `site/` for free local verification. Supply GROQ_API_KEY privately only when deliberately enabling live checks. Do not commit a real key or call paid APIs as part of ordinary tests.
 3. Add request limits, monitoring, coordinated cache misses, overall AI deadlines, and safe error handling.
 4. Move dated puzzles into the database. Generate and validate future 16-category boards ahead of time and release one shared board at midnight America/New_York. Keep a reserve queue and protect future boards from public access.
 5. Add server-verified sessions and completion records, optional recoverable identity, daily streaks, and an archive with independent per-puzzle progress. Archive wins should not repair daily streaks unless that policy is intentionally changed.
