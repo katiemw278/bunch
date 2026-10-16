@@ -1,5 +1,21 @@
 # Bunch
 
+## Current game source
+
+The current public 4×4 game is in [site/](site/). This snapshot matches Sites commit `2d0bb73ef6fba752d0e16a62360e0ad3b92c88aa` from October 16, 2026.
+
+The original 3×3 Next.js / Express implementation in `client/` and `server/` is preserved below. Its instructions describe the older version, not the current game.
+
+The current version uses React / TypeScript, Vinext, Cloudflare Workers, D1, and Groq. All 152 tracked source and asset files are included. Runtime secrets, player data, judgment database contents, node_modules, and build output are not included. The Sites configuration remains in the snapshot as deployment context; standalone Cloudflare deployment still needs to be configured. No paid services or new deployments were activated by this import.
+
+See [MIGRATION.md](MIGRATION.md) for next steps.
+
+---
+
+## Original implementation documentation
+
+# Bunch
+
 A daily browser category puzzle. Nine categories. How few answers can you use to clear them all?
 
 ---
