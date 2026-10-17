@@ -8,6 +8,14 @@ try {
   while (Date.now() < deadline) {
     if (server.exitCode !== null) throw new Error("Local server stopped before becoming ready");
     try { ready = (await fetch("http://127.0.0.1:5173", { signal: AbortSignal.timeout(1000) })).ok; } catch {}
+    if (ready) {
+      // Warm the admin route too: Wrangler can restart while loading its modules.
+      try {
+        const session = await fetch("http://127.0.0.1:5173/api/admin/session", { signal: AbortSignal.timeout(1000) });
+        const data = session.ok ? await session.json() : null;
+        ready = data?.configured === true && data?.authenticated === false;
+      } catch { ready = false; }
+    }
     if (ready) break;
     await new Promise(resolve => setTimeout(resolve, 200));
   }
