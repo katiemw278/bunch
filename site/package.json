@@ -19,7 +19,7 @@
     "test:standalone": "node scripts/verify-local.mjs",
     "db:seed:local": "node scripts/seed-local.mjs",
     "puzzles:review": "node scripts/review-puzzles.mjs",
-    "test:unit": "node --test tests/judge.test.mjs tests/sharing.test.mjs tests/admin-auth.test.mjs tests/generation-error.test.mjs"
+    "test:unit": "node --test tests/judge.test.mjs tests/sharing.test.mjs tests/admin-auth.test.mjs tests/generation-error.test.mjs tests/generation-policy.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

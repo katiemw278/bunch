@@ -25,3 +25,7 @@ Changes use content revisions to reject stale-tab writes. Generation holds a dat
 The local-only seed script creates `admin-fixture` for HTTP tests. The local test runner explicitly supplies a public test password only to a local Worker; it is never a production default. Never reuse that fixture password in production. Production access remains disabled without the actual Cloudflare secret.
 
 Manual visual and real-provider generation checks remain necessary. Automated tests do not send generation requests to Groq. After configuring your admin password, generate and review your first real draft before scheduling additional boards.
+
+## Generation style
+
+The generator uses the original 4×4 board as an explicit style reference: short, everyday labels about traits, parts, uses, places and recognizable types. It proposes 3–5 examples per card and at least four shared example words spanning eight cards. Mechanical checks reject overlong labels, spelling-game patterns, insufficient shared examples and one example repeated across more than five cards. These checks apply to AI-generated drafts, not your hand-edited definitions, and cannot prove that the connections are factual or fun. Review remains required. Existing drafts are unchanged; use Regenerate to apply the new style to one of them. Recent approved labels are used as a freshness preference rather than using unapproved drafts as the style reference.

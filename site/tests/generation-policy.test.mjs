@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {getPuzzleById} from '../lib/server/puzzles.js';
+import {validateGeneratedStyle,GENERATION_POLICY} from '../lib/server/generation-policy.js';
+const reference=()=>structuredClone(getPuzzleById('puzzle-004-hard4').categories);
+test('today’s reference board meets the generation style checks',()=>assert.doesNotThrow(()=>validateGeneratedStyle(reference())));
+test('long labels and letter gimmicks are rejected',()=>{const long=reference();long[0].label='A very complicated category with far too many different qualifications';assert.throws(()=>validateGeneratedStyle(long),/long card labels/);const spelling=reference();spelling[0].label='Words that rhyme';assert.throws(()=>validateGeneratedStyle(spelling),/spelling-game/);});
+test('isolated category lists do not pass as an overlapping board',()=>{const cats=reference().map((c,i)=>({...c,examples:['a'+i,'b'+i,'c'+i]}));assert.throws(()=>validateGeneratedStyle(cats),/too few shared connections/);});
+test('a catch-all repeated example cannot stand in for varied overlaps',()=>{const cats=reference().map(c=>({...c,examples:[...c.examples,'thing']}));assert.throws(()=>validateGeneratedStyle(cats),/too much of the board/);});
+test('definitions are not expanded into exhaustive lists',()=>{assert.match(GENERATION_POLICY,/without making examples exhaustive/);assert.match(GENERATION_POLICY,/alternate established meanings/);});
