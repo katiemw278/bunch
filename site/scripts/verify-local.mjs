@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-const server = spawn(process.execPath, ["node_modules/wrangler/bin/wrangler.js", "dev", "--config", "dist/server/wrangler.json", "--local", "--var", "JUDGING_MODE:seeded", "--var", "GENERATION_MODE:disabled", "--var", "ADMIN_PASSWORD:local-admin-fixture-password-32-chars", "--persist-to", ".wrangler/state", "--ip", "127.0.0.1", "--port", "5173", "--inspector-port", "0"], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, WRANGLER_SEND_METRICS: "false" } });
+const server = spawn(process.execPath, ["node_modules/wrangler/bin/wrangler.js", "dev", "--config", "dist/server/wrangler.json", "--local", "--var", "JUDGING_MODE:seeded", "--var", "GENERATION_MODE:disabled", "--var", "ADMIN_PASSWORD:local-admin-fixture-password-32-chars", "--persist-to", ".wrangler/state", "--ip", "127.0.0.1", "--port", "5173", "--inspector-port", "0"], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, WRANGLER_SEND_METRICS: "false", WRANGLER_CI_DISABLE_CONFIG_WATCHING: "true" } });
 let log = "";
 for (const stream of [server.stdout, server.stderr]) stream.on("data", data => { log = (log + data).slice(-12000); });
 try {

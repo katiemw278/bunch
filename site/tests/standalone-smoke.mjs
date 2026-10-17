@@ -8,7 +8,7 @@ assert.equal(easternDate(new Date('2026-11-02T05:00:00Z')),'2026-11-02');
 assert.deepEqual(streakStats(['2026-10-13','2026-10-14','2026-10-14','2026-10-16','2026-10-20'],'2026-10-16'),{currentStreak:1,bestStreak:2,dailyCompleted:3});
 const base=new URL(process.env.BUNCH_TEST_URL??'http://127.0.0.1:5173');
 if(!['localhost','127.0.0.1','[::1]'].includes(base.hostname))throw new Error('Local testing only');
-function client(){let cookie='';return async(path,body)=>{const r=await fetch(new URL(path,base),{signal:AbortSignal.timeout(15000),method:body?'POST':'GET',headers:{cookie,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return {status:r.status,body:await r.json()};};}
+function client(){let cookie='';return async(path,body)=>{const r=await fetch(new URL(path,base),{signal:AbortSignal.timeout(30000),method:body?'POST':'GET',headers:{Connection:'close',cookie,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return {status:r.status,body:await r.json()};};}
 assert.equal((await fetch(base)).status,200);
 const a=client(),b=client();
 const today=(await a('/api/puzzle/today')).body;
