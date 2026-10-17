@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { generationFailure } from './generation-error';
-import { GENERATION_POLICY, validateGeneratedStyle } from './generation-policy';
+import { GENERATION_POLICY, materializeGeneratedCategories } from './generation-policy';
 import { db, type StoredCategory } from './store';
 import { easternDate,addDays,puzzleNumber } from './calendar';
 export async function canonicalCategories(value:unknown):Promise<StoredCategory[]> {
@@ -45,9 +45,8 @@ export async function generateDraft(date:string,existing?:{id:string;content:str
   const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${runtime.GROQ_API_KEY}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(30000),body:JSON.stringify({model:'openai/gpt-oss-20b',temperature:.7,reasoning_effort:'low',max_completion_tokens:4000,response_format:{type:'json_object'},messages:[{role:'system',content:GENERATION_POLICY},{role:'user',content:JSON.stringify({date,avoidRecentLabels:avoid})}]})});
   if(!response.ok)throw new Error(await generationFailure(response));
   const payload=await response.json() as {choices?:{message?:{content?:string}}[]};
-  const categories=await canonicalCategories(JSON.parse(payload.choices?.[0]?.message?.content??'null')?.categories);
+  const categories=await canonicalCategories(materializeGeneratedCategories(JSON.parse(payload.choices?.[0]?.message?.content??'null')?.categories));
 
-  validateGeneratedStyle(categories);
 
   if(existing){
    const result=await db().prepare("UPDATE puzzles SET content=?,source='groq-gpt-oss-20b',created_at=? WHERE id=? AND status='draft' AND content=? AND target_date IS ?").bind(JSON.stringify({categories}),new Date().toISOString(),existing.id,existing.content,existing.target_date).run();
