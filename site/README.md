@@ -63,7 +63,7 @@ Submissions check only selected, uncleared categories. Individual normalized ans
 
 `GENERATION_MODE=disabled` and `JUDGING_MODE=seeded` prevent paid provider calls locally. The hourly scheduled handler is wired but drafting stays disabled until explicitly configured. When enabled, it drafts at most one missing board in the next seven days per invocation. AI output must pass shape/length/uniqueness checks and is stored privately as a draft. No draft is published automatically. The existing provider is Groq, independent of a ChatGPT subscription. Do not enable live mode until a provider key and spending controls are configured.
 
-List drafts with `pnpm puzzles:review`. Inspect every definition, verify example answers and meaningful overlaps, and confirm a full clearing path. Approve with `pnpm puzzles:review --approve ID --date YYYY-MM-DD --reviewed`. Add `--remote` only after Cloudflare setup to review the production database. The command refuses to overwrite an occupied date. Approved future boards are hidden until their release date. Review needs human judgment; validation alone cannot establish puzzle quality. A scheduled low-queue warning goes to Worker logs. Alert delivery, a review dashboard, distributed generation locking and automatic reserve creation are not implemented yet.
+List drafts with `pnpm puzzles:review`. Inspect every definition, verify example answers and meaningful overlaps, and confirm a full clearing path. Approve with `pnpm puzzles:review --approve ID --date YYYY-MM-DD --reviewed`. Add `--remote` only after Cloudflare setup to review the production database. The command refuses to overwrite an occupied date. Approved future boards are hidden until their release date. Review needs human judgment; validation alone cannot establish puzzle quality. A scheduled low-queue warning goes to Worker logs. The private `/admin` review dashboard and date-specific generation leases are implemented. Alert delivery and automatic reserve creation are not implemented yet.
 
 ### Remaining before public launch
 
@@ -72,3 +72,7 @@ Create the Cloudflare account/D1 database; replace the placeholder database ID; 
 ## Automated checks
 
 See [docs/TESTING.md](docs/TESTING.md) for offline judging tests, database-backed gameplay regressions, the semantic review set and the remaining real-device checklist. `pnpm test:unit` runs without a server or provider key. The root `.github/workflows/bunch-checks.yml` runs the standalone checks on pushes and pull requests; it never deploys.
+
+## Private board administration
+
+The `/admin` board studio supports password-protected draft generation, previewing, category edits, overlap review, approval and returning future boards to draft. It is locked until an `ADMIN_PASSWORD` Cloudflare secret of at least 32 characters is configured. See [docs/ADMIN.md](docs/ADMIN.md) for setup, review steps, security behavior and tests. Scheduled AI generation remains separately disabled; manual generation consumes Groq quota only when the signed-in owner clicks Generate or Regenerate.

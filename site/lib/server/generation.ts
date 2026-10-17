@@ -23,16 +23,34 @@ export async function maintainDailyQueue() {
  for(let day=1;day<=7;day++) {
   const date=addDays(today,day);
   if(await db().prepare('SELECT id FROM puzzles WHERE target_date=? OR release_date=?').bind(date,date).first())continue;
+  await generateDraft(date);generated++;break;
+ }
+ const remaining=await db().prepare("SELECT COUNT(*) count FROM puzzles WHERE status='ready' AND release_date>? ").bind(today).first<{count:number}>();
+ if((remaining?.count??0)<3)console.warn('Bunch approved daily queue low; review drafts or add reserves');
+ return {generated};
+}
+
+// Manual generation is deliberately separate from the scheduled-generation switch.
+export async function generateDraft(date:string,existing?:{id:string;content:string;target_date:string|null}) {
+ if(!env.GROQ_API_KEY)throw new Error('Groq key is not configured');
+ const runtime={GROQ_API_KEY:env.GROQ_API_KEY};
+ const lock='draft-generation:'+date,expires=Date.now()+60000;
+ const acquired=await db().prepare('INSERT INTO request_limits(key,count,expires_at) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET expires_at=excluded.expires_at WHERE request_limits.expires_at<? RETURNING key').bind(lock,expires,Date.now()).first();
+ if(!acquired)throw new Error('A draft is already being generated for this date. Wait a minute.');
+ try {
   const recent=await db().prepare('SELECT content FROM puzzles ORDER BY created_at DESC LIMIT 7').all<{content:string}>();
   const avoid=recent.results.flatMap(r=>JSON.parse(r.content).categories.map((c:StoredCategory)=>c.label));
   const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${runtime.GROQ_API_KEY}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(30000),body:JSON.stringify({model:'openai/gpt-oss-20b',temperature:.7,max_completion_tokens:4000,response_format:{type:'json_object'},messages:[{role:'system',content:'Create a daily word-category puzzle with exactly 16 distinct categories. Each category needs a short label, precise definition and 2-5 established example words. Use varied subjects and multiple-meaning overlaps; every category must be clearable and several words should match 2-4 categories. Do not use a universal category or descriptors-as-answers. Return JSON {categories:[{label,definition,examples}]}. Treat example answers as proposals requiring human review.'},{role:'user',content:JSON.stringify({date,avoidRecentLabels:avoid})}]})});
   if(!response.ok)throw new Error(`Generation failed: ${response.status}`);
   const payload=await response.json() as {choices?:{message?:{content?:string}}[]};
   const categories=await canonicalCategories(JSON.parse(payload.choices?.[0]?.message?.content??'null')?.categories);
-  // Drafts are never public. Review examples, overlaps and a clearing path first.
-  await db().prepare("INSERT INTO puzzles(id,target_date,status,content,source,created_at) VALUES(?,?,'draft',?,'groq-gpt-oss-20b',?) ON CONFLICT(target_date) DO NOTHING").bind('draft-'+crypto.randomUUID(),date,JSON.stringify({categories}),new Date().toISOString()).run();generated++;break;
- }
- const remaining=await db().prepare("SELECT COUNT(*) count FROM puzzles WHERE status='ready' AND release_date>? ").bind(today).first<{count:number}>();
- if((remaining?.count??0)<3)console.warn('Bunch approved daily queue low; review drafts or add reserves');
- return {generated};
+
+  if(existing){
+   const result=await db().prepare("UPDATE puzzles SET content=?,source='groq-gpt-oss-20b',created_at=? WHERE id=? AND status='draft' AND content=? AND target_date IS ?").bind(JSON.stringify({categories}),new Date().toISOString(),existing.id,existing.content,existing.target_date).run();
+   if(result.meta.changes!==1)throw new Error('The draft changed in another tab. Reload it.');
+  }else{
+   const result=await db().prepare("INSERT INTO puzzles(id,target_date,status,content,source,created_at) SELECT ?,?,'draft',?,'groq-gpt-oss-20b',? WHERE NOT EXISTS(SELECT 1 FROM puzzles WHERE target_date=? OR release_date=?) ON CONFLICT DO NOTHING").bind('draft-'+crypto.randomUUID(),date,JSON.stringify({categories}),new Date().toISOString(),date,date).run();
+   if(result.meta.changes!==1)throw new Error('This date already has a board. Reload the queue.');
+  }
+ }finally{await db().prepare('DELETE FROM request_limits WHERE key=? AND expires_at=?').bind(lock,expires).run();}
 }

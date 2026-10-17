@@ -4,3 +4,6 @@ JUDGING_MODE=seeded
 
 # AI drafting is separately disabled. Enabling judging does not enable drafts.
 GENERATION_MODE=disabled
+
+# Optional private admin access: set a unique 32+ character password locally.
+# Configure the real ADMIN_PASSWORD as a Secret in Cloudflare, never in Git.
