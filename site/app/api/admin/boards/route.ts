@@ -43,5 +43,5 @@ export async function POST(req:Request){
   const approved=body.action==='approve';
   const result=await db().prepare("UPDATE puzzles SET content=?,target_date=?,release_date=?,number=?,status=? WHERE id=? AND status='draft' AND content=? AND target_date IS ?").bind(content,body.date,approved?body.date:null,approved?puzzleNumber(body.date):null,approved?'ready':'draft',row.id,row.content,row.target_date).run();
   return result.meta.changes===1?adminJson({ok:true}):adminJson({error:'The board changed. Reload the queue.'},409);
- }catch(error){const message=error instanceof Error?error.message:'Request failed';console.error('Admin board action failed',message);return adminJson({error:message.startsWith('Generation failed:')?'The AI provider could not generate a board. Try again later.':message.includes('UNIQUE constraint')?'That date already has a board.':message},400);}
+ }catch(error){const message=error instanceof Error?error.message:'Request failed';console.error('Admin board action failed',message);return adminJson({error:message.includes('UNIQUE constraint')?'That date already has a board.':message},400);}
 }

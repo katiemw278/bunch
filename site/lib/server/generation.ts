@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import { generationFailure } from './generation-error';
 import { db, type StoredCategory } from './store';
 import { easternDate,addDays,puzzleNumber } from './calendar';
 export async function canonicalCategories(value:unknown):Promise<StoredCategory[]> {
@@ -40,8 +41,8 @@ export async function generateDraft(date:string,existing?:{id:string;content:str
  try {
   const recent=await db().prepare('SELECT content FROM puzzles ORDER BY created_at DESC LIMIT 7').all<{content:string}>();
   const avoid=recent.results.flatMap(r=>JSON.parse(r.content).categories.map((c:StoredCategory)=>c.label));
-  const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${runtime.GROQ_API_KEY}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(30000),body:JSON.stringify({model:'openai/gpt-oss-20b',temperature:.7,max_completion_tokens:4000,response_format:{type:'json_object'},messages:[{role:'system',content:'Create a daily word-category puzzle with exactly 16 distinct categories. Each category needs a short label, precise definition and 2-5 established example words. Use varied subjects and multiple-meaning overlaps; every category must be clearable and several words should match 2-4 categories. Do not use a universal category or descriptors-as-answers. Return JSON {categories:[{label,definition,examples}]}. Treat example answers as proposals requiring human review.'},{role:'user',content:JSON.stringify({date,avoidRecentLabels:avoid})}]})});
-  if(!response.ok)throw new Error(`Generation failed: ${response.status}`);
+  const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${runtime.GROQ_API_KEY}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(30000),body:JSON.stringify({model:'openai/gpt-oss-20b',temperature:.7,reasoning_effort:'low',max_completion_tokens:4000,response_format:{type:'json_object'},messages:[{role:'system',content:'Create a daily word-category puzzle with exactly 16 distinct categories. Each category needs a short label, precise definition and 2-5 established example words. Use varied subjects and multiple-meaning overlaps; every category must be clearable and several words should match 2-4 categories. Do not use a universal category or descriptors-as-answers. Return JSON {categories:[{label,definition,examples}]}. Treat example answers as proposals requiring human review.'},{role:'user',content:JSON.stringify({date,avoidRecentLabels:avoid})}]})});
+  if(!response.ok)throw new Error(await generationFailure(response));
   const payload=await response.json() as {choices?:{message?:{content?:string}}[]};
   const categories=await canonicalCategories(JSON.parse(payload.choices?.[0]?.message?.content??'null')?.categories);
 
