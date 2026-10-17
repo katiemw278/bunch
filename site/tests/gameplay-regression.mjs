@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 const base=new URL(process.env.BUNCH_TEST_URL??'http://127.0.0.1:5173');
 if(!['localhost','127.0.0.1','[::1]'].includes(base.hostname))throw new Error('Local only');
-function client(){let cookie='';return async(path,body,headers={})=>{const r=await fetch(new URL(path,base),{signal:AbortSignal.timeout(30000),method:body?'POST':'GET',headers:{Connection:'close',cookie,...(body?{'Content-Type':'application/json'}:{}),...headers},...(body?{body:JSON.stringify(body)}:{})});if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return{status:r.status,body:await r.json()};};}
+function client(){let cookie='';return async(path,body,headers={})=>{const r=await fetch(new URL(path,base),{signal:AbortSignal.timeout(30000),method:body?'POST':'GET',headers:{Connection:'close',cookie,...(body?{'Content-Type':'application/json'}:{}),...headers},...(body?{body:headers.origin?'':JSON.stringify(body)}:{})});if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return{status:r.status,body:await r.json()};};}
 const a=client(),puzzleId='puzzle-004-hard4';
 await a('/api/game?puzzle='+puzzleId);
 const state=async()=>(await a('/api/game?puzzle='+puzzleId)).body;
