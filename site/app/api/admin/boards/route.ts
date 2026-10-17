@@ -1,6 +1,7 @@
+import {adjacentRepeatLabels,withScheduleLock} from '@/lib/server/category-reuse';
 import {authorized,adminJson,adminOrigin,readBody} from '@/lib/server/admin';
 import {db,limited} from '@/lib/server/store';
-import {easternDate,puzzleNumber} from '@/lib/server/calendar';
+import {easternDate,puzzleNumber,addDays} from '@/lib/server/calendar';
 import {validDate} from '@/lib/server/admin-auth';
 import {canonicalCategories,generateDraft} from '@/lib/server/generation';
 type Row={id:string;target_date:string|null;release_date:string|null;number:number|null;status:string;content:string;source:string;created_at:string};
@@ -8,7 +9,11 @@ function revision(row:Row){return JSON.stringify([row.content,row.target_date,ro
 export async function GET(req:Request){
  if(!await authorized(req))return adminJson({error:'Sign in to continue.'},401);
  const rows=await db().prepare("SELECT * FROM puzzles WHERE status='draft' OR status='reserve' OR release_date>=? ORDER BY COALESCE(release_date,target_date,'9999'),created_at LIMIT 90").bind(easternDate()).all<Row>();
- return adminJson({today:easternDate(),boards:rows.results.map(r=>({...r,categories:JSON.parse(r.content).categories,revision:revision(r),content:undefined}))});
+ const ready=rows.results.filter(r=>r.status==='ready').map(r=>({date:r.release_date!,categories:JSON.parse(r.content).categories}));
+ // Include yesterday even though it is outside the editable queue.
+ const previous=await db().prepare("SELECT release_date date,content FROM puzzles WHERE status='ready' AND release_date=?").bind(addDays(easternDate(),-1)).all<{date:string;content:string}>();
+ ready.push(...previous.results.map(r=>({date:r.date,categories:JSON.parse(r.content).categories})));
+ return adminJson({today:easternDate(),boards:rows.results.map(r=>({...r,categories:JSON.parse(r.content).categories,repeatWarnings:r.release_date||r.target_date?adjacentRepeatLabels(JSON.parse(r.content).categories,ready,(r.release_date??r.target_date)!):[],revision:revision(r),content:undefined}))});
 }
 export async function POST(req:Request){
  if(!await authorized(req))return adminJson({error:'Sign in to continue.'},401);
@@ -41,7 +46,15 @@ export async function POST(req:Request){
   const duplicate=await db().prepare('SELECT id FROM puzzles WHERE id<>? AND (target_date=? OR release_date=?)').bind(row.id,body.date,body.date).first();
   if(duplicate)return adminJson({error:'That date already has a board.'},409);
   const approved=body.action==='approve';
+  const save=async()=>{
+  if(approved){
+   const adjacent=await db().prepare("SELECT release_date date,content FROM puzzles WHERE id<>? AND status='ready' AND release_date IN (?,?)").bind(row.id,addDays(body.date,-1),addDays(body.date,1)).all<{date:string;content:string}>();
+   const repeats=adjacentRepeatLabels(categories,adjacent.results.map(r=>({date:r.date,categories:JSON.parse(r.content).categories})),body.date);
+   if(repeats.length)return adminJson({error:'Categories cannot repeat on consecutive days. Change: '+repeats.join(', ')},409);
+  }
   const result=await db().prepare("UPDATE puzzles SET content=?,target_date=?,release_date=?,number=?,status=? WHERE id=? AND status='draft' AND content=? AND target_date IS ?").bind(content,body.date,approved?body.date:null,approved?puzzleNumber(body.date):null,approved?'ready':'draft',row.id,row.content,row.target_date).run();
   return result.meta.changes===1?adminJson({ok:true}):adminJson({error:'The board changed. Reload the queue.'},409);
+  };
+  return approved?await withScheduleLock(db(),save):await save();
  }catch(error){const message=error instanceof Error?error.message:'Request failed';console.error('Admin board action failed',message);return adminJson({error:message.includes('UNIQUE constraint')?'That date already has a board.':message},400);}
 }

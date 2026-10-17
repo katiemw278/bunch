@@ -42,7 +42,9 @@ export async function generateDraft(date:string,existing?:{id:string;content:str
  try {
   const recent=await db().prepare("SELECT content FROM puzzles WHERE status IN ('ready','reserve') ORDER BY COALESCE(release_date,created_at) DESC LIMIT 7").all<{content:string}>();
   const avoid=recent.results.flatMap(r=>JSON.parse(r.content).categories.map((c:StoredCategory)=>c.label));
-  const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${runtime.GROQ_API_KEY}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(30000),body:JSON.stringify({model:'openai/gpt-oss-20b',temperature:.7,reasoning_effort:'low',max_completion_tokens:4000,response_format:{type:'json_object'},messages:[{role:'system',content:GENERATION_POLICY},{role:'user',content:JSON.stringify({date,avoidRecentLabels:avoid})}]})});
+  const adjacent=await db().prepare("SELECT content FROM puzzles WHERE id<>? AND COALESCE(release_date,target_date) IN (?,?) AND status IN ('ready','draft')").bind(existing?.id??'',addDays(date,-1),addDays(date,1)).all<{content:string}>();
+  const forbiddenAdjacentCategories=adjacent.results.flatMap(r=>JSON.parse(r.content).categories.map((c:StoredCategory)=>c.label));
+  const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${runtime.GROQ_API_KEY}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(30000),body:JSON.stringify({model:'openai/gpt-oss-20b',temperature:.7,reasoning_effort:'low',max_completion_tokens:4000,response_format:{type:'json_object'},messages:[{role:'system',content:GENERATION_POLICY},{role:'user',content:JSON.stringify({date,forbiddenAdjacentCategories,recentLabelsForVariety:avoid})}]})});
   if(!response.ok)throw new Error(await generationFailure(response));
   const payload=await response.json() as {choices?:{message?:{content?:string}}[]};
   const categories=await canonicalCategories(materializeGeneratedCategories(JSON.parse(payload.choices?.[0]?.message?.content??'null')?.categories));

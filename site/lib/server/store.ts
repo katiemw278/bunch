@@ -1,5 +1,6 @@
+import {adjacentRepeatLabels,withScheduleLock} from './category-reuse';
 import { env } from 'cloudflare:workers';
-import { easternDate, puzzleNumber, streakStats } from './calendar';
+import { easternDate, puzzleNumber, streakStats, addDays } from './calendar';
 import { getPuzzleById as legacyPuzzle } from './puzzles';
 export type StoredCategory = { id:string; label:string; definition:string; examples:string[] };
 export type StoredPuzzle = { id:string; number:number; date:string; categories:StoredCategory[] };
@@ -7,7 +8,14 @@ type PuzzleRow = {id:string;number:number;release_date:string;status:string;cont
 export function db() { if(!env.DB) throw new Error('DB binding unavailable'); return env.DB; }
 export function publicPuzzle(p:StoredPuzzle) {return {id:p.id,number:p.number,date:p.date,categories:p.categories.map(({id,label})=>({id,label}))};}
 export async function releaseReserve(date:string) {
-  await db().prepare(`UPDATE puzzles SET release_date=?, number=?, status='ready' WHERE id=(SELECT id FROM puzzles WHERE status='reserve' ORDER BY created_at,id LIMIT 1) AND NOT EXISTS(SELECT 1 FROM puzzles WHERE release_date=?)`).bind(date,puzzleNumber(date),date).run();
+  await withScheduleLock(db(),async()=>{
+   if(await db().prepare('SELECT id FROM puzzles WHERE release_date=?').bind(date).first())return;
+   const neighbors=await db().prepare("SELECT release_date date,content FROM puzzles WHERE status='ready' AND release_date IN (?,?)").bind(addDays(date,-1),addDays(date,1)).all<{date:string;content:string}>();
+   const boards=neighbors.results.map(r=>({date:r.date,categories:JSON.parse(r.content).categories}));
+   const reserves=await db().prepare("SELECT id,content FROM puzzles WHERE status='reserve' ORDER BY created_at,id LIMIT 100").all<{id:string;content:string}>();
+   const candidate=reserves.results.find(r=>!adjacentRepeatLabels(JSON.parse(r.content).categories,boards,date).length);
+   if(candidate)await db().prepare("UPDATE puzzles SET release_date=?,number=?,status='ready' WHERE id=? AND status='reserve' AND NOT EXISTS(SELECT 1 FROM puzzles WHERE release_date=?)").bind(date,puzzleNumber(date),candidate.id,date).run();
+  });
 }
 function unpack(row:PuzzleRow):StoredPuzzle { return {id:row.id,number:row.number,date:row.release_date,categories:JSON.parse(row.content).categories}; }
 export async function dailyPuzzle(date=easternDate()) {

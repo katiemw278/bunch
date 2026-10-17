@@ -4,7 +4,7 @@ import {addDays} from '@/lib/server/calendar';
 import {generationReviewWarnings} from '@/lib/server/generation-policy';
 import './admin.css';
 type Card={id:string;label:string;definition:string;examples:string[]};
-type Board={id:string;status:string;target_date:string|null;release_date:string|null;source:string;revision:string;categories:Card[]};
+type Board={id:string;status:string;target_date:string|null;release_date:string|null;source:string;revision:string;repeatWarnings?:string[];categories:Card[]};
 async function api(path:string,body?:unknown,method?:string){
  const r=await fetch('/api/admin/'+path,{method:method??(body?'POST':'GET'),headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});
  const data=await r.json() as Record<string,unknown>;if(!r.ok)throw new Error(String(data.error??'Request failed'));return data;
@@ -20,7 +20,7 @@ export default function AdminPage(){
  function edit(index:number,field:'label'|'definition'|'examples',value:string){setChecks([false,false,false]);setSelected(old=>old?{...old,categories:old.categories.map((c,i)=>i===index?{...c,[field]:field==='examples'?value.split('\n'):value}:c)}:old);}
  async function mutate(action:string){if(!selected)return;await api('boards',{action,id:selected.id,revision:selected.revision,date,categories:selected.categories,reviewed:checks.every(Boolean)});await load(selected.id);setChecks([false,false,false]);setNotice(action==='approve'?'Approved. This board will become public at midnight Eastern on its release date.':action==='regenerate'?'New draft ready. Review it before approving.':'Saved.');}
  const editable=selected?.status==='draft',released=!!selected?.release_date&&selected.release_date<=today;
- const reviewWarnings=selected?generationReviewWarnings(selected.categories):[];
+ const reviewWarnings=selected?[...generationReviewWarnings(selected.categories),...(selected.repeatWarnings??[]).map(label=>'Consecutive-day repeat: '+label+'. Change this category before approval.')]:[];
  const overlaps=new Map<string,string[]>();for(const card of selected?.categories??[])for(const example of new Set(card.examples.map(e=>e.trim().toLowerCase()).filter(Boolean)))overlaps.set(example,[...(overlaps.get(example)??[]),card.label]);
  return <main className="admin-studio"><header><div><a href="/">← Bunch</a><h1>Board studio</h1><p>Draft thoughtfully. Make a whole bunch.</p></div>{auth&&<button disabled={busy} onClick={()=>run(async()=>{await api('session',undefined,'DELETE');setAuth(false);setSelected(null);setBoards([]);})}>Sign out</button>}</header>
  {error&&<p className="admin-error" role="alert">{error}</p>}{notice&&<p className="admin-notice" role="status">{notice}</p>}

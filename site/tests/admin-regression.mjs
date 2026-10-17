@@ -24,6 +24,8 @@ board=(await request('/api/admin/boards')).body.boards.find(b=>b.id==='admin-fix
 assert.equal((await request('/api/admin/boards',payload('save',{date:addDays(easternDate(),15)}))).status,200);
 assert.equal((await request('/api/admin/boards',payload('approve',{reviewed:true}))).status,409);
 board=(await request('/api/admin/boards')).body.boards.find(b=>b.id==='admin-fixture');
+const adjacent=await request('/api/admin/boards',payload('approve',{reviewed:true,date:addDays(easternDate(),8)}));
+assert.equal(adjacent.status,409);assert.match(adjacent.body.error,/consecutive days/);
 assert.equal((await request('/api/admin/boards',payload('approve',{reviewed:true}))).status,200);
 board=(await request('/api/admin/boards')).body.boards.find(b=>b.id==='admin-fixture');assert.equal(board.status,'ready');assert.equal((await fetch(base+'/api/puzzle/'+board.id)).status,404);
 assert.equal((await request('/api/admin/boards',payload('unapprove'))).status,200);
