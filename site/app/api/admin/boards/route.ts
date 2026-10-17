@@ -1,3 +1,6 @@
+import {env} from 'cloudflare:workers';
+import {reviewDraftExamples} from '@/lib/server/draft-review';
+import {JUDGING_POLICY} from '@/lib/server/judge-data';
 import {adjacentRepeatLabels,withScheduleLock} from '@/lib/server/category-reuse';
 import {authorized,adminJson,adminOrigin,readBody} from '@/lib/server/admin';
 import {db,limited} from '@/lib/server/store';
@@ -13,14 +16,14 @@ export async function GET(req:Request){
  // Include yesterday even though it is outside the editable queue.
  const previous=await db().prepare("SELECT release_date date,content FROM puzzles WHERE status='ready' AND release_date=?").bind(addDays(easternDate(),-1)).all<{date:string;content:string}>();
  ready.push(...previous.results.map(r=>({date:r.date,categories:JSON.parse(r.content).categories})));
- return adminJson({today:easternDate(),boards:rows.results.map(r=>({...r,categories:JSON.parse(r.content).categories,repeatWarnings:r.release_date||r.target_date?adjacentRepeatLabels(JSON.parse(r.content).categories,ready,(r.release_date??r.target_date)!):[],revision:revision(r),content:undefined}))});
+ return adminJson({today:easternDate(),boards:rows.results.map(r=>({...r,categories:JSON.parse(r.content).categories,repeatWarnings:r.release_date||r.target_date?adjacentRepeatLabels(JSON.parse(r.content).categories,ready,(r.release_date??r.target_date)!):[],aiReview:JSON.parse(r.content).aiReview,revision:revision(r),content:undefined}))});
 }
 export async function POST(req:Request){
  if(!await authorized(req))return adminJson({error:'Sign in to continue.'},401);
  if(!adminOrigin(req))return adminJson({error:'Invalid origin'},403);
  if(await limited('admin-write:'+(req.headers.get('cf-connecting-ip')??'local'),15))return adminJson({error:'Please wait a minute.'},429);
  try{
-  const body=await readBody(req),today=easternDate();
+  const body=await readBody(req,128000),today=easternDate();
   if(body.action==='generate'){
    if(!validDate(body.date,today))return adminJson({error:'Choose a valid future Eastern date.'},400);
    if(await db().prepare('SELECT id FROM puzzles WHERE target_date=? OR release_date=?').bind(body.date,body.date).first())return adminJson({error:'That date already has a board.'},409);
@@ -36,13 +39,26 @@ export async function POST(req:Request){
    return result.meta.changes===1?adminJson({ok:true}):adminJson({error:'Board cannot be unapproved.'},409);
   }
   if(row.status!=='draft')return adminJson({error:'Only drafts can be edited or approved.'},409);
+  if(body.action==='repair'){
+   if(!validDate(row.target_date,today)||body.date!==row.target_date)return adminJson({error:'Save your release date before using Fix with AI.'},400);
+   const categories=await canonicalCategories(body.categories);
+   await generateDraft(row.target_date!,{id:row.id,content:row.content,target_date:row.target_date},categories);return adminJson({ok:true});
+  }
+  if(body.action==='verify'){
+   if(!env.GROQ_API_KEY)return adminJson({error:'Groq key is not configured'},503);
+   const categories=await canonicalCategories(body.categories);
+   const result=await reviewDraftExamples(categories,env.GROQ_API_KEY,JUDGING_POLICY);
+   const written=await db().prepare("UPDATE puzzles SET content=? WHERE id=? AND status='draft' AND content=? AND target_date IS ?").bind(JSON.stringify(result),row.id,row.content,row.target_date).run();
+   return written.meta.changes===1?adminJson({ok:true}):adminJson({error:'The draft changed in another tab. Reload it.'},409);
+  }
   if(body.action==='regenerate'){
    if(!validDate(row.target_date,today))return adminJson({error:'Save a future release date first.'},400);
    await generateDraft(row.target_date!,{id:row.id,content:row.content,target_date:row.target_date});return adminJson({ok:true});
   }
   if(!['save','approve'].includes(body.action)||!validDate(body.date,today))return adminJson({error:'Choose a valid future Eastern date.'},400);
   if(body.action==='approve' && body.reviewed!==true)return adminJson({error:'Complete the review checklist first.'},400);
-  const categories=await canonicalCategories(body.categories),content=JSON.stringify({categories});
+  const categories=await canonicalCategories(body.categories);
+  const old=JSON.parse(row.content);const content=JSON.stringify({categories,...(JSON.stringify(categories)===JSON.stringify(old.categories)&&old.aiReview?{aiReview:old.aiReview}:{})});
   const duplicate=await db().prepare('SELECT id FROM puzzles WHERE id<>? AND (target_date=? OR release_date=?)').bind(row.id,body.date,body.date).first();
   if(duplicate)return adminJson({error:'That date already has a board.'},409);
   const approved=body.action==='approve';
