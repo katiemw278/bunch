@@ -3,7 +3,7 @@ import {addDays,easternDate} from '../lib/server/calendar.js';
 const base=process.env.BUNCH_TEST_URL??'http://127.0.0.1:5173';
 if(!['localhost','127.0.0.1','[::1]'].includes(new URL(base).hostname))throw new Error('Local only');
 let cookie='';
-async function request(path,body,options={}){const r=await fetch(base+path,{signal:AbortSignal.timeout(30000),method:options.method??(body?'POST':'GET'),headers:{Connection:'close',cookie,origin:base,...(body?{'Content-Type':'application/json'}:{}),...options.headers},body:body?(options.headers?.origin?'':JSON.stringify(body)):undefined});const set=r.headers.get('set-cookie');if(set)cookie=set.split(';')[0];return {status:r.status,body:await r.json(),cookie:set,cache:r.headers.get('cache-control')};}
+async function request(path,body,options={}){const r=await fetch(base+path,{signal:AbortSignal.timeout(30000),method:options.method??(body?'POST':'GET'),headers:{Connection:'close',cookie,origin:base,...(body?{'Content-Type':'application/json'}:{}),...options.headers},body:body?(options.headers?.origin||(!cookie&&path==='/api/admin/boards')?'':JSON.stringify(body)):undefined});const set=r.headers.get('set-cookie');if(set)cookie=set.split(';')[0];return {status:r.status,body:await r.json(),cookie:set,cache:r.headers.get('cache-control')};}
 assert.equal((await request('/api/admin/boards')).status,401);
 assert.equal((await request('/api/admin/boards',{action:'generate',date:addDays(easternDate(),1)})).status,401);
 assert.equal((await request('/api/admin/session',{password:'wrong'})).status,401);
