@@ -5,7 +5,7 @@ import {JUDGING_POLICY} from './judge-data';
 import { env } from 'cloudflare:workers';
 import { generationFailure } from './generation-error';
 import { GENERATION_POLICY, materializeGeneratedCategories } from './generation-policy';
-import { db, type StoredCategory } from './store';
+import { db, pinnedPuzzleId, type StoredCategory } from './store';
 import { easternDate,addDays,puzzleNumber } from './calendar';
 export async function canonicalCategories(value:unknown):Promise<StoredCategory[]> {
  if(!Array.isArray(value)||value.length!==16)throw new Error('Exactly 16 categories required');
@@ -22,7 +22,7 @@ export async function canonicalCategories(value:unknown):Promise<StoredCategory[
 export async function maintainDailyQueue() {
  const runtime=env as unknown as {GENERATION_MODE?:string;GROQ_API_KEY?:string};
  await db().prepare('DELETE FROM request_limits WHERE expires_at<?').bind(Date.now()).run();
- if(runtime.GENERATION_MODE!=='live')return {generated:0,mode:'disabled'};
+ if(pinnedPuzzleId() || runtime.GENERATION_MODE!=='live')return {generated:0,mode:'disabled'};
  if(!runtime.GROQ_API_KEY)throw new Error('Live generation requires GROQ_API_KEY');
  const today=easternDate();let generated=0;
  // One draft per run bounds cost; frequent scheduled runs replenish the horizon.

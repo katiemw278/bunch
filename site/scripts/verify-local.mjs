@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-const server = spawn(process.execPath, ["node_modules/wrangler/bin/wrangler.js", "dev", "--config", "dist/server/wrangler.json", "--local", "--var", "JUDGING_MODE:seeded", "--var", "GENERATION_MODE:disabled", "--var", "ADMIN_PASSWORD:local-admin-fixture-password-32-chars", "--persist-to", ".wrangler/state", "--ip", "127.0.0.1", "--port", "5173", "--inspector-port", "0"], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, WRANGLER_SEND_METRICS: "false", WRANGLER_CI_DISABLE_CONFIG_WATCHING: "true" } });
+const server = spawn(process.execPath, ["node_modules/wrangler/bin/wrangler.js", "dev", "--config", "dist/server/wrangler.json", "--local", "--var", "JUDGING_MODE:seeded", "--var", "GENERATION_MODE:disabled", "--var", "PINNED_PUZZLE_ID:" + (process.env.BUNCH_TEST_PINNED ? "demo-board-001" : ""), "--var", "ADMIN_PASSWORD:local-admin-fixture-password-32-chars", "--persist-to", ".wrangler/state", "--ip", "127.0.0.1", "--port", "5173", "--inspector-port", "0"], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, WRANGLER_SEND_METRICS: "false", WRANGLER_CI_DISABLE_CONFIG_WATCHING: "true" } });
 let log = "";
 for (const stream of [server.stdout, server.stderr]) stream.on("data", data => { log = (log + data).slice(-12000); });
 try {
@@ -21,9 +21,19 @@ try {
   }
   if (!ready) throw new Error("Local server did not become ready within 45 seconds");
   process.env.BUNCH_TEST_URL = "http://127.0.0.1:5173";
+  if(process.env.BUNCH_TEST_PINNED){
+    const {strict:assert}=await import('node:assert');
+    const first=await (await fetch(process.env.BUNCH_TEST_URL+'/api/puzzle/today')).json();
+    const second=await (await fetch(process.env.BUNCH_TEST_URL+'/api/puzzle/today')).json();
+    assert.equal(first.id,'puzzle-004-hard4'); // Local DB has no production demo row: bundled fallback.
+    assert.equal(first.categories.length,16);
+    assert.deepEqual(first,second);
+    console.log('Pinned original board regression passed');
+  } else {
   await import("../tests/standalone-smoke.mjs");
   await import("../tests/gameplay-regression.mjs");
   await import("../tests/admin-regression.mjs");
+  }
 } catch (error) {
   console.error(log);
   throw error;

@@ -21,7 +21,8 @@
   ],
   "vars": {
     "JUDGING_MODE": "live",
-    "GENERATION_MODE": "disabled"
+    "GENERATION_MODE": "disabled",
+    "PINNED_PUZZLE_ID": "demo-board-001"
   },
   "observability": {
     "enabled": true

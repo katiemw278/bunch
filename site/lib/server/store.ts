@@ -18,12 +18,24 @@ export async function releaseReserve(date:string) {
   });
 }
 function unpack(row:PuzzleRow):StoredPuzzle { return {id:row.id,number:row.number,date:row.release_date,categories:JSON.parse(row.content).categories}; }
+// Keep the original playtest board active until daily releases are explicitly enabled.
+export function pinnedPuzzleId() { return (env as unknown as {PINNED_PUZZLE_ID?:string}).PINNED_PUZZLE_ID?.trim(); }
+async function pinnedPuzzle():Promise<StoredPuzzle|null> {
+ const id=pinnedPuzzleId();if(!id)return null;
+ const row=await db().prepare("SELECT * FROM puzzles WHERE id=? AND status IN ('ready','reserve')").bind(id).first<PuzzleRow>();
+ const original=legacyPuzzle('puzzle-004-hard4') as StoredPuzzle;
+ if(row)return {...unpack(row),number:row.number??original.number,date:row.release_date??original.date};
+ // A fresh installation can still play the original bundled board.
+ return id==='demo-board-001'?original:null;
+}
 export async function dailyPuzzle(date=easternDate()) {
+  if(pinnedPuzzleId())return pinnedPuzzle();
   let row=await db().prepare("SELECT * FROM puzzles WHERE release_date=? AND status='ready'").bind(date).first<PuzzleRow>();
   if(!row) { await releaseReserve(date); row=await db().prepare("SELECT * FROM puzzles WHERE release_date=? AND status='ready'").bind(date).first<PuzzleRow>(); }
   return row?unpack(row):null;
 }
 export async function availablePuzzle(id:string) {
+ if(pinnedPuzzleId()){const pinned=await pinnedPuzzle();if(pinned?.id===id)return pinned;}
  const row=await db().prepare("SELECT * FROM puzzles WHERE id=? AND status='ready' AND release_date<=?").bind(id,easternDate()).first<PuzzleRow>();
  if(row)return unpack(row);
  const p=legacyPuzzle(id);
